@@ -6,7 +6,7 @@ from urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 def user_exists(tg_id: int) -> bool:
-    base_url = "https://localhost:44332/api/v1/auth/exists"
+    base_url = "https://localhost:44332/api/v1/auth/exists" # https://localhost:80:80/api/v1/auth/exists?tgId=1134784306
     params = {"tgId": tg_id}
 
     try:

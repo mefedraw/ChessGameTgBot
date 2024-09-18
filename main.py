@@ -55,13 +55,15 @@ async def start_command(message: types.Message):
     await message.answer("Нажмите кнопку ниже, чтобы выбрать контакт и начать игру.", reply_markup=keyboard)
 
 
-# Обработчик inline-запроса выбора игры
 @dp.inline_handler()
 async def inline_query_handler(inline_query: types.InlineQuery):
     query = inline_query.query.lower()
 
     results = []
     for game in PREDEFINED_GAMES:
+        # Получаем имя пользователя из inline-запроса
+        username = inline_query.from_user.username or inline_query.from_user.first_name
+
         results.append(
             InlineQueryResultArticle(
                 id=game["id"],
@@ -69,58 +71,21 @@ async def inline_query_handler(inline_query: types.InlineQuery):
                 description=game["rules"],
                 thumb_url=game["thumbnail"],
                 input_message_content=InputTextMessageContent(
-                    message_text=f"Правила игры: {game['rules']}\nНажмите на кнопку, чтобы присоединиться к игре.",
+                    message_text=f"Хамстер криминал под ником @{username} хочет сыграть с вами в шахматы\n"
+                                 f"Если вы считаете себя настоящим сигма котиком, то скорее принимайте вызов \n\nПравила игры: {game['rules']}\n\nНажмите на кнопку, чтобы присоединиться к игре.",
                     parse_mode="Markdown"
                 ),
                 reply_markup=InlineKeyboardMarkup().add(
-                    InlineKeyboardButton("Присоединиться", callback_data=f"join_game_{game['id']}"))
-                .add(
-                    InlineKeyboardButton("Отменить игру", callback_data=f"cancel_game_{game['id']}")
+                    InlineKeyboardButton(
+                        "Присоединиться",
+                        url="t.me/SigmaChessBot/SigmaChessWebApp"
+                    )
                 )
             )
         )
 
     await bot.answer_inline_query(inline_query.id, results)
-
-
-# Обработчик inline-результата (создание комнаты)
-@dp.chosen_inline_handler(lambda chosen_inline_result: True)
-async def inline_result_handler(chosen_inline_result: types.ChosenInlineResult):
-    result_id = chosen_inline_result.result_id
-    user = chosen_inline_result.from_user
-
-    # Создаем комнату для игры
-    room_id = f"room_{user.id}_{result_id}"
-    room = {
-        "host": user,
-        "status": GameStatus.NotStarted,
-        "game_id": result_id
-    }
-    rooms[room_id] = room
-
-    game_url = f"https://t.me/your_bot_username/{room_id}?startapp={room_id}"
-
-    # Отправляем сообщение с возможностью присоединиться к игре
-    join_button = InlineKeyboardButton("Присоединиться", url=game_url)
-    markup = InlineKeyboardMarkup().add(join_button)
-
-    await bot.send_message(user.id, f"Игра {room_id} создана. Ожидаем присоединения второго игрока.", reply_markup=markup)
-
-    # Обновление статуса
-    room["status"] = GameStatus.InProgress
-
-
-# Обработчик нажатия на inline-кнопку "Присоединиться"
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('join_game_'))
-async def process_callback_button(callback_query: types.CallbackQuery):
-    game_id = callback_query.data.split('_')[-1]
-    game = next((g for g in PREDEFINED_GAMES if g["id"] == game_id), None)
-
-    if game:
-        await bot.answer_callback_query(callback_query.id)
-        await bot.send_message(callback_query.from_user.id, f"Вы присоединились к игре: {game['title']}")
-    else:
-        await bot.answer_callback_query(callback_query.id, "Игра не найдена", show_alert=True)
+    
 
 
 # Запуск бота
