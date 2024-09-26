@@ -1,11 +1,14 @@
+import datetime
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputTextMessageContent, InlineQueryResultArticle
 import logging
 import config
 import func
-import db_requests
+import db_requests, hashlib
 from enum import Enum
+from datetime import datetime
 
 API_TOKEN = config.BOT_TOKEN
 
@@ -16,6 +19,25 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+game_sessions = {}
+
+def save_game_session(button_id: str, username: str):
+    # Сохраняем информацию о сессии игры с уникальным button_id
+    game_sessions[button_id] = {
+        "creator": username,
+        "game_id": button_id
+    }
+
+
+def generate_game_id(username: str) -> str:
+    # Получаем текущее время в формате UTC до cекунд
+    current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+    # Создаем строку на основе никнейма и времени (убрали фигурные скобки)
+    data_to_hash = f"{username}{current_time}"
+
+    # Вычисляем SHA-256 хэш
+    return hashlib.sha256(data_to_hash.encode('utf-8')).hexdigest()
 
 class GameStatus(Enum):
     NotStarted = 1
@@ -50,7 +72,10 @@ async def start_command(message: types.Message):
     TG_ID = message.from_user.id
     TG_USERNAME = message.from_user.username or message.from_user.first_name
     avatar_url = await func.get_user_avatar(TG_ID)
-    db_requests.send_user_data(message.from_user.id, TG_USERNAME, avatar_url)
+    if(db_requests.user_exists(TG_ID)==False):
+        db_requests.auth_user(message.from_user.id, TG_USERNAME, avatar_url)
+    else:
+        print("User already exists")
 
     await message.answer("Нажмите кнопку ниже, чтобы выбрать контакт и начать игру.", reply_markup=keyboard)
 
@@ -63,6 +88,7 @@ async def inline_query_handler(inline_query: types.InlineQuery):
     for game in PREDEFINED_GAMES:
         # Получаем имя пользователя из inline-запроса
         username = inline_query.from_user.username or inline_query.from_user.first_name
+        game_id = generate_game_id(username)
 
         results.append(
             InlineQueryResultArticle(
@@ -78,14 +104,15 @@ async def inline_query_handler(inline_query: types.InlineQuery):
                 reply_markup=InlineKeyboardMarkup().add(
                     InlineKeyboardButton(
                         "Присоединиться",
-                        url="t.me/SigmaChessBot/SigmaChessWebApp"
+                        url="t.me/SigmaChessBot/SigmaChessWebApp",
+
                     )
                 )
             )
         )
+        save_game_session(game_id, username)
 
     await bot.answer_inline_query(inline_query.id, results)
-    
 
 
 # Запуск бота

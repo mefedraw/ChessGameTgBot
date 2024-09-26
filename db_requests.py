@@ -6,7 +6,7 @@ from urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 def user_exists(tg_id: int) -> bool:
-    base_url = "https://localhost:44332/api/v1/auth/exists" # https://localhost:80:80/api/v1/auth/exists?tgId=1134784306
+    base_url = "https://localhost:44332/api/v1/auth/exists"
     params = {"tgId": tg_id}
 
     try:
@@ -27,7 +27,7 @@ def user_exists(tg_id: int) -> bool:
         return False
 
 
-def send_user_data(tg_id: int, username: str, avatar_url: str):
+def auth_user(tg_id: int, username: str, avatar_url: str):
     url = "https://localhost:44332/api/v1/auth/user"
 
     # Параметры запроса
