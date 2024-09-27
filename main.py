@@ -30,14 +30,16 @@ def save_game_session(button_id: str, username: str):
 
 
 def generate_game_id(username: str) -> str:
-    # Получаем текущее время в формате UTC до cекунд
     current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-
-    # Создаем строку на основе никнейма и времени (убрали фигурные скобки)
     data_to_hash = f"{username}{current_time}"
 
-    # Вычисляем SHA-256 хэш
-    return hashlib.sha256(data_to_hash.encode('utf-8')).hexdigest()
+    # Генерация SHA-256 хэша и преобразование в число
+    sha256_hash = hashlib.sha256(data_to_hash.encode('utf-8')).hexdigest()
+
+    # Преобразуем хэш в число
+    numeric_hash = int(sha256_hash, 16)  # Перевод из шестнадцатеричной системы в десятичную
+
+    return str(numeric_hash)[-5:]
 
 class GameStatus(Enum):
     NotStarted = 1
@@ -87,8 +89,8 @@ async def inline_query_handler(inline_query: types.InlineQuery):
     results = []
     for game in PREDEFINED_GAMES:
         # Получаем имя пользователя из inline-запроса
-        username = inline_query.from_user.username or inline_query.from_user.first_name
-        game_id = generate_game_id(username)
+        user_id = inline_query.from_user.id
+        game_id = generate_game_id(user_id)  # Генерируем уникальный ID для игры
 
         results.append(
             InlineQueryResultArticle(
@@ -97,20 +99,23 @@ async def inline_query_handler(inline_query: types.InlineQuery):
                 description=game["rules"],
                 thumb_url=game["thumbnail"],
                 input_message_content=InputTextMessageContent(
-                    message_text=f"Хамстер криминал под ником @{username} хочет сыграть с вами в шахматы\n"
+                    message_text=f"Хамстер криминал под ником @{user_id} хочет сыграть с вами в шахматы\n"
                                  f"Если вы считаете себя настоящим сигма котиком, то скорее принимайте вызов \n\nПравила игры: {game['rules']}\n\nНажмите на кнопку, чтобы присоединиться к игре.",
                     parse_mode="Markdown"
                 ),
                 reply_markup=InlineKeyboardMarkup().add(
                     InlineKeyboardButton(
                         "Присоединиться",
-                        url="t.me/SigmaChessBot/SigmaChessWebApp",
+                        url=f"http://t.me/SigmaChessBot/SigmaChessWebApp?startapp={game_id}"
+                        # f"https://t.me/{BOT_USERNAME}?startapp={game_id}"
+                        # https://t.me/SigmaChessBot/SigmaChessWebApp?startapp=0583160880
+                        # f"t.me/{config.BOT_USERNAME}/{config.BOT_WEB_APP_USERNAME}?startapp={game_id}"
 
                     )
                 )
             )
         )
-        save_game_session(game_id, username)
+        save_game_session(game_id, user_id)
 
     await bot.answer_inline_query(inline_query.id, results)
 
