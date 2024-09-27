@@ -1,4 +1,5 @@
 import datetime
+import random
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
@@ -29,17 +30,11 @@ def save_game_session(button_id: str, username: str):
     }
 
 
-def generate_game_id(username: str) -> str:
-    current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    data_to_hash = f"{username}{current_time}"
-
-    # Генерация SHA-256 хэша и преобразование в число
-    sha256_hash = hashlib.sha256(data_to_hash.encode('utf-8')).hexdigest()
-
-    # Преобразуем хэш в число
-    numeric_hash = int(sha256_hash, 16)  # Перевод из шестнадцатеричной системы в десятичную
-
-    return str(numeric_hash)[-5:]
+def generate_game_id(user_tg_id: str) -> str:
+    current_time = datetime.utcnow().strftime('%H%M%S')
+    random_number = random.randint(1000, 9999)
+    game_id = f"{str(user_tg_id)[:4]}{current_time}{str(random_number)}"
+    return game_id
 
 class GameStatus(Enum):
     NotStarted = 1
